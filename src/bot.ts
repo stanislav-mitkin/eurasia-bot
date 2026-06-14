@@ -93,7 +93,10 @@ export function createBot(token: string, email: string, password: string): Bot<B
 
   bot.command("start", async (ctx) => {
     const { id, first_name, username } = ctx.from!;
-    registerUser(id, first_name, username).catch(console.error);
+    registerUser(id, first_name, username).catch(async (err) => {
+      console.error("registerUser failed:", err);
+      await ctx.reply(`[debug] registerUser error: ${err?.message ?? err}`);
+    });
 
     await ctx.reply(
       `Добро пожаловать! 👋\n\nЭтот бот помогает получить код скидки по <b>карте Евразии</b> 🇯🇵\n\nВыберите ресторан — получите 4-значный код для официанта.`,

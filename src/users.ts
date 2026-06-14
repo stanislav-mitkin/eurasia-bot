@@ -12,13 +12,13 @@ const FILENAME = "users.json";
 async function readUsers(): Promise<UserRecord[]> {
   const { blobs } = await list({ prefix: FILENAME });
   if (blobs.length === 0) return [];
-  const res = await fetch(blobs[0].url);
+  const res = await fetch(blobs[0].downloadUrl);
   return res.json() as Promise<UserRecord[]>;
 }
 
 async function writeUsers(users: UserRecord[]): Promise<void> {
   await put(FILENAME, JSON.stringify(users), {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
     contentType: "application/json",
   });
