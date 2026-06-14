@@ -1,6 +1,7 @@
 import { Bot, Context, InlineKeyboard, session, SessionFlavor } from "grammy";
 import { requestCode, getRests, Restaurant } from "./api";
 import { checkCooldown, recordRequest, COOLDOWN_MS } from "./ratelimit";
+import { registerUser } from "./users";
 
 const PER_PAGE = 8;
 
@@ -91,6 +92,9 @@ export function createBot(token: string, email: string, password: string): Bot<B
   bot.use(session<SessionData, BotCtx>({ initial: () => ({ page: 0 }) }));
 
   bot.command("start", async (ctx) => {
+    const { id, first_name, username } = ctx.from!;
+    registerUser(id, first_name, username).catch(console.error);
+
     await ctx.reply(
       `Добро пожаловать! 👋\n\nЭтот бот помогает получить код скидки по <b>карте Евразии</b> 🇯🇵\n\nВыберите ресторан — получите 4-значный код для официанта.`,
       {
