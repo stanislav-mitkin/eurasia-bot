@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { webhookCallback } from "grammy";
 import { login, refreshRestaurants } from "../src/api";
 import { createBot } from "../src/bot";
@@ -6,8 +7,8 @@ const TOKEN = process.env.TOKEN ?? "";
 const EMAIL = process.env.EVRASIA_EMAIL ?? "";
 const PASSWORD = process.env.EVRASIA_PASSWORD ?? "";
 
-type StdHandler = (req: Request) => Promise<Response>;
-let handleUpdate: StdHandler | null = null;
+type ExpressHandler = (req: VercelRequest, res: VercelResponse) => Promise<void>;
+let handleUpdate: ExpressHandler | null = null;
 let initPromise: Promise<void> | null = null;
 
 async function initialize() {
@@ -21,12 +22,11 @@ async function initialize() {
   await refreshRestaurants();
 
   const bot = createBot(TOKEN, EMAIL, PASSWORD);
-  handleUpdate = webhookCallback(bot, "std/http") as unknown as StdHandler;
+  handleUpdate = webhookCallback(bot, "express") as unknown as ExpressHandler;
   console.log("Initialization complete");
 }
 
 function ensureInit(): Promise<void> {
-  // Reset on failure so next request retries
   if (!initPromise) {
     initPromise = initialize().catch((err) => {
       console.error("Initialization failed:", err);
@@ -37,13 +37,12 @@ function ensureInit(): Promise<void> {
   return initPromise;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await ensureInit();
-    return await handleUpdate!(req);
+    await handleUpdate!(req, res);
   } catch (err) {
     console.error("Handler error:", err);
-    // Return 200 to prevent Telegram from retrying indefinitely
-    return new Response("ok", { status: 200 });
+    res.status(200).send("ok");
   }
 }
