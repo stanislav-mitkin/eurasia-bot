@@ -20,6 +20,10 @@ async function main() {
   setInterval(refreshRestaurants, REFRESH_INTERVAL_MS);
 
   const bot = createBot(TOKEN, EMAIL, PASSWORD);
+
+  // Remove webhook if set — required before long polling can start
+  await bot.api.deleteWebhook();
+
   await bot.start();
   console.log("Bot started (long polling)");
 }
