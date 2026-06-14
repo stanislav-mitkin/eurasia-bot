@@ -32,6 +32,7 @@ async function writeUsers(users: UserRecord[]): Promise<void> {
   await put(FILENAME, JSON.stringify(users), {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 }
