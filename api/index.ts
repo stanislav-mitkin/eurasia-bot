@@ -38,7 +38,20 @@ function ensureInit(): Promise<void> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST" || !req.body?.update_id) {
+  console.log("method:", req.method, "body type:", typeof req.body, "preview:", JSON.stringify(req.body)?.slice(0, 80));
+
+  if (req.method !== "POST") {
+    res.status(200).send("ok");
+    return;
+  }
+
+  // Parse body if it came in as a string
+  if (typeof req.body === "string") {
+    try { req.body = JSON.parse(req.body); } catch { /* ignore */ }
+  }
+
+  if (!req.body?.update_id) {
+    console.log("Not a Telegram update, skipping");
     res.status(200).send("ok");
     return;
   }
