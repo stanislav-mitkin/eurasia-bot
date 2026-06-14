@@ -1,14 +1,12 @@
 import { Bot, Context, InlineKeyboard, session, SessionFlavor } from "grammy";
 import { requestCode, getRests, Restaurant } from "./api";
+import { checkCooldown, recordRequest, COOLDOWN_MS } from "./ratelimit";
 
 const PER_PAGE = 8;
-const COOLDOWN_MS = 30_000;
 
 interface SessionData {
   search?: string;
   page: number;
-  lastCodeTime?: number;
-  lastRestId?: number;
 }
 
 export type BotCtx = Context & SessionFlavor<SessionData>;
@@ -150,10 +148,13 @@ export function createBot(token: string, email: string, password: string): Bot<B
       return;
     }
 
-    const elapsed = Date.now() - (ctx.session.lastCodeTime ?? 0);
-    if (restId === ctx.session.lastRestId && elapsed < COOLDOWN_MS) {
-      const wait = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
-      await ctx.answerCallbackQuery(`⏳ Подождите ещё ${wait} сек.`);
+    const userId = ctx.from!.id;
+    const remaining = checkCooldown(userId, restId);
+    if (remaining > 0) {
+      const mins = Math.floor(remaining / 60_000);
+      const secs = Math.ceil((remaining % 60_000) / 1000);
+      const waitStr = mins > 0 ? `${mins} мин ${secs} сек` : `${secs} сек`;
+      await ctx.answerCallbackQuery(`⏳ Подождите ещё ${waitStr}`);
       return;
     }
 
@@ -163,11 +164,14 @@ export function createBot(token: string, email: string, password: string): Bot<B
       const code = await requestCode(restId, email, password);
 
       if (code) {
-        ctx.session.lastCodeTime = Date.now();
-        ctx.session.lastRestId = restId;
+        recordRequest(userId, restId);
+        const nextTime = new Date(Date.now() + COOLDOWN_MS).toLocaleTimeString("ru-RU", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
         await ctx.editMessageText(
-          `✅ <b>${rest.name}</b>\n\nКод для официанта: <code>${code}</code>\n\n<i>Скажите официанту «Красная карта» и назовите этот код</i>`,
+          `✅ <b>${rest.name}</b>\n\nКод для официанта: <code>${code}</code>\n\n<i>Скажите официанту «Красная карта» и назовите этот код</i>\n\n🕐 Следующий запрос: <b>${nextTime}</b>`,
           {
             parse_mode: "HTML",
             reply_markup: new InlineKeyboard()
