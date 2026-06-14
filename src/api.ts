@@ -7,6 +7,14 @@ let loginInProgress = false;
 
 export const getSessionCookies = () => sessionCookies;
 
+let cachedRests: Restaurant[] = [];
+export const getRests = () => cachedRests;
+export async function refreshRestaurants(): Promise<void> {
+  const updated = await fetchRestaurants();
+  cachedRests = updated;
+  console.log(`Restaurant list updated: ${updated.length} restaurants`);
+}
+
 function parseCookies(headers: Headers): string {
   return ((headers as any).getSetCookie?.() as string[] ?? [])
     .map((h: string) => h.split(";")[0])
