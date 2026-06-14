@@ -10,10 +10,19 @@ export interface UserRecord {
 const FILENAME = "users.json";
 
 async function readUsers(): Promise<UserRecord[]> {
-  const { blobs } = await list({ prefix: FILENAME });
-  if (blobs.length === 0) return [];
-  const res = await fetch(blobs[0].downloadUrl);
-  return res.json() as Promise<UserRecord[]>;
+  try {
+    const { blobs } = await list({ prefix: FILENAME });
+    if (blobs.length === 0) return [];
+    const res = await fetch(blobs[0].downloadUrl);
+    if (!res.ok) {
+      console.error("readUsers: fetch failed", res.status);
+      return [];
+    }
+    return (await res.json()) as UserRecord[];
+  } catch (err) {
+    console.error("readUsers error:", err);
+    return [];
+  }
 }
 
 async function writeUsers(users: UserRecord[]): Promise<void> {
@@ -30,9 +39,15 @@ export async function registerUser(
   username?: string
 ): Promise<void> {
   const users = await readUsers();
-  if (users.some((u) => u.chatId === chatId)) return;
+
+  if (users.some((u) => u.chatId === chatId)) {
+    console.log(`registerUser: chatId ${chatId} already exists`);
+    return;
+  }
+
   users.push({ chatId, firstName, username, startedAt: new Date().toISOString() });
   await writeUsers(users);
+  console.log(`registerUser: saved chatId ${chatId} (${firstName}), total: ${users.length}`);
 }
 
 export async function getAllUsers(): Promise<UserRecord[]> {
