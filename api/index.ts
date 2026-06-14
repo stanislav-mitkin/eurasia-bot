@@ -38,6 +38,11 @@ function ensureInit(): Promise<void> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST" || !req.body?.update_id) {
+    res.status(200).send("ok");
+    return;
+  }
+
   try {
     await ensureInit();
     await handleUpdate!(req, res);
