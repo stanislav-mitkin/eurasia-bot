@@ -22,7 +22,7 @@ async function initialize() {
   await refreshRestaurants();
 
   const bot = createBot(TOKEN, EMAIL, PASSWORD);
-  handleUpdate = webhookCallback(bot, "express") as unknown as ExpressHandler;
+  handleUpdate = webhookCallback(bot, "next-js") as unknown as ExpressHandler;
   console.log("Initialization complete");
 }
 
