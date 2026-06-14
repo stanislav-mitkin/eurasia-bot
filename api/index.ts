@@ -58,9 +58,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await ensureInit();
+    console.log("Calling handleUpdate...");
     await handleUpdate!(req, res);
+    console.log("handleUpdate done");
   } catch (err) {
-    console.error("Handler error:", err);
+    console.error("Handler error:", String(err));
     res.status(200).send("ok");
   }
 }
