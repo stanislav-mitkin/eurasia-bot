@@ -13,7 +13,10 @@ async function readUsers(): Promise<UserRecord[]> {
   try {
     const { blobs } = await list({ prefix: FILENAME });
     if (blobs.length === 0) return [];
-    const res = await fetch(blobs[0].downloadUrl);
+    const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
+    const res = await fetch(blobs[0].url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!res.ok) {
       console.error("readUsers: fetch failed", res.status);
       return [];
