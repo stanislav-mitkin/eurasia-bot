@@ -1,5 +1,5 @@
 import { Bot, Context, InlineKeyboard, session, SessionFlavor } from "grammy";
-import { requestCode, getRests, Restaurant } from "./api";
+import { requestCode, getRests, Restaurant, UpstreamError } from "./api";
 import { checkCooldown, recordRequest, COOLDOWN_MS } from "./ratelimit";
 import { registerUser } from "./users";
 
@@ -196,7 +196,11 @@ export function createBot(token: string, email: string, password: string): Bot<B
       }
     } catch (err) {
       console.error("requestCode error:", err);
-      await ctx.reply("❌ Произошла ошибка. Попробуйте позже.");
+      if (err instanceof UpstreamError) {
+        await ctx.reply("⚠️ Сайт ресторанов сейчас недоступен. Попробуйте через пару минут.");
+      } else {
+        await ctx.reply("❌ Произошла ошибка. Попробуйте позже.");
+      }
     }
   });
 

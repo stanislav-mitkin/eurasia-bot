@@ -11,13 +11,21 @@ async function main() {
   if (!TOKEN) throw new Error("TOKEN env variable is required");
   if (!EMAIL || !PASSWORD) throw new Error("EVRASIA_EMAIL and EVRASIA_PASSWORD env variables are required");
 
-  console.log("Logging in to evrasia.rest...");
-  await login(EMAIL, PASSWORD);
+  // Upstream may be down at boot — don't let that prevent the bot from starting.
+  // requestCode() will transparently re-login on its own if the session is missing.
+  try {
+    console.log("Logging in to evrasia.rest...");
+    await login(EMAIL, PASSWORD);
 
-  console.log("Fetching restaurant list...");
-  await refreshRestaurants();
+    console.log("Fetching restaurant list...");
+    await refreshRestaurants();
+  } catch (err) {
+    console.error("Initial login/restaurant fetch failed, starting bot anyway:", err);
+  }
 
-  setInterval(refreshRestaurants, REFRESH_INTERVAL_MS);
+  setInterval(() => {
+    refreshRestaurants().catch((err) => console.error("Restaurant refresh failed:", err));
+  }, REFRESH_INTERVAL_MS);
 
   const bot = createBot(TOKEN, EMAIL, PASSWORD);
 
@@ -28,4 +36,7 @@ async function main() {
   console.log("Bot started (long polling)");
 }
 
-main();
+main().catch((err) => {
+  console.error("Fatal error during startup:", err);
+  process.exit(1);
+});
