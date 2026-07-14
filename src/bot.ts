@@ -1,5 +1,5 @@
 import { Bot, Context, InlineKeyboard, session, SessionFlavor } from "grammy";
-import { requestCode, getRests, Restaurant, UpstreamError } from "./api";
+import { requestCode, getRests, listAccounts, setCurrentAccount, Restaurant, UpstreamError } from "./api";
 import { checkCooldown, recordRequest, COOLDOWN_MS } from "./ratelimit";
 import { registerUser } from "./users";
 
@@ -86,8 +86,22 @@ function helpText(): string {
 1️⃣➕1️⃣ Акция 1+1 в счастливые часы`;
 }
 
-export function createBot(token: string, email: string, password: string): Bot<BotCtx> {
+function accountKeyboard(): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  for (const acc of listAccounts()) {
+    kb.text(`${acc.current ? "✅ " : ""}${acc.email}`, `account:${acc.index}`).row();
+  }
+  return kb;
+}
+
+function accountText(): string {
+  const active = listAccounts().find((a) => a.current);
+  return `🔑 Текущий аккаунт evrasia.rest: <b>${active?.email ?? "—"}</b>\n\nВыберите аккаунт для ручного переключения:`;
+}
+
+export function createBot(token: string, adminChatId?: number): Bot<BotCtx> {
   const bot = new Bot<BotCtx>(token);
+  const isAdmin = (ctx: BotCtx) => adminChatId !== undefined && ctx.from?.id === adminChatId;
 
   bot.use(session<SessionData, BotCtx>({ initial: () => ({ page: 0 }) }));
 
@@ -115,6 +129,27 @@ export function createBot(token: string, email: string, password: string): Bot<B
 
   bot.command("help", async (ctx) => {
     await ctx.reply(helpText(), { parse_mode: "HTML" });
+  });
+
+  bot.command("account", async (ctx) => {
+    if (!isAdmin(ctx)) return;
+    await ctx.reply(accountText(), { parse_mode: "HTML", reply_markup: accountKeyboard() });
+  });
+
+  bot.callbackQuery(/^account:(\d+)$/, async (ctx) => {
+    if (!isAdmin(ctx)) {
+      await ctx.answerCallbackQuery();
+      return;
+    }
+    const index = parseInt(ctx.match[1], 10);
+    try {
+      setCurrentAccount(index);
+      await ctx.answerCallbackQuery("✅ Аккаунт переключён");
+      await ctx.editMessageText(accountText(), { parse_mode: "HTML", reply_markup: accountKeyboard() });
+    } catch (err) {
+      console.error("setCurrentAccount error:", err);
+      await ctx.answerCallbackQuery("❌ Не удалось переключить аккаунт");
+    }
   });
 
   bot.callbackQuery("open_menu", async (ctx) => {
@@ -165,7 +200,7 @@ export function createBot(token: string, email: string, password: string): Bot<B
     await ctx.answerCallbackQuery("⏳ Запрашиваю код...");
 
     try {
-      const code = await requestCode(restId, email, password);
+      const code = await requestCode(restId);
 
       if (code) {
         recordRequest(userId, restId);
@@ -173,6 +208,16 @@ export function createBot(token: string, email: string, password: string): Bot<B
           hour: "2-digit",
           minute: "2-digit",
         });
+
+        if (adminChatId) {
+          const { first_name, username } = ctx.from!;
+          bot.api
+            .sendMessage(
+              adminChatId,
+              `🔔 ${first_name}${username ? ` (@${username})` : ""} запросил код для «${rest.name}»`
+            )
+            .catch((err) => console.error("Failed to notify admin:", err));
+        }
 
         await ctx.editMessageText(
           `✅ <b>${rest.name}</b>\n\nКод для официанта: <code>${code}</code>\n\n<i>Скажите официанту «Карта Евразии» и назовите этот код</i>\n\n🕐 Следующий запрос: <b>${nextTime}</b>`,

@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { webhookCallback } from "grammy";
-import { login, refreshRestaurants } from "../src/api";
+import { initAccounts, loginCurrentAccount, refreshRestaurants } from "../src/api";
 import { createBot } from "../src/bot";
 
 const TOKEN = process.env.TOKEN ?? "";
-const EMAIL = process.env.EVRASIA_EMAIL ?? "";
-const PASSWORD = process.env.EVRASIA_PASSWORD ?? "";
+const ACCOUNTS_RAW = process.env.EVRASIA_ACCOUNTS ?? "";
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID ? Number(process.env.ADMIN_CHAT_ID) : undefined;
 
 type ExpressHandler = (req: VercelRequest, res: VercelResponse) => Promise<void>;
 
@@ -13,9 +13,10 @@ let handleUpdate: ExpressHandler | null = null;
 let initPromise: Promise<void> | null = null;
 
 async function initialize(): Promise<void> {
-  await login(EMAIL, PASSWORD);
+  initAccounts(ACCOUNTS_RAW);
+  await loginCurrentAccount();
   await refreshRestaurants();
-  const bot = createBot(TOKEN, EMAIL, PASSWORD);
+  const bot = createBot(TOKEN, ADMIN_CHAT_ID);
   handleUpdate = webhookCallback(bot, "next-js") as unknown as ExpressHandler;
 }
 
