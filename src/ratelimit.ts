@@ -1,4 +1,4 @@
-export const COOLDOWN_MS = 60 * 1000; // 1 minute per restaurant
+export const COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes per restaurant
 
 const lastRequest = new Map<string, number>();
 

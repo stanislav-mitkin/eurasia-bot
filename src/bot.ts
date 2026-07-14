@@ -205,6 +205,7 @@ export function createBot(token: string, adminChatId?: number): Bot<BotCtx> {
       if (code) {
         recordRequest(userId, restId);
         const nextTime = new Date(Date.now() + COOLDOWN_MS).toLocaleTimeString("ru-RU", {
+          timeZone: "Europe/Moscow",
           hour: "2-digit",
           minute: "2-digit",
         });
